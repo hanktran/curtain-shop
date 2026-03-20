@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  VIEWER
+}
+
+enum InquiryStatus {
+  OPEN
+  CLOSED
+}
+
+model User {
+  id       String    @id @default(cuid())
+  email    String    @unique
+  password String
+  role     UserRole  @default(ADMIN)
+  products Product[]
+
+  @@map("users")
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  slug           String?  @unique
+  title          String
+  type           String
+  category       String
+  price          String
+  origin         String   // comma-separated slugs: "my,uc,bi"
+  color          String[] @default([])
+  material       String[] @default([])
+  avatar         String   // CDN URL of first image (denormalized for card renders)
+  showOnHomePage Boolean  @default(false)
+  images         String[] // PostgreSQL TEXT[] — all Uploadthing CDN URLs
+  wood           String?
+  brand          String?
+  windowBlinds   String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([type])
+  @@index([category])
+  @@index([type, category])
+  @@index([showOnHomePage])
+  @@map("products")
+}
+
+model Discount {
+  id      String  @id @default(cuid())
+  content String  // Sanitized HTML from Tiptap
+  bgColor String
+  status  Boolean @default(false)
+
+  @@map("discounts")
+}
+
+// Lead capture: customers submit quote requests from product detail pages
+model Inquiry {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String
+  message      String?
+  productId    String?       // soft reference — not a FK so products can be deleted freely
+  productTitle String?
+  status       InquiryStatus @default(OPEN)
+  createdAt    DateTime      @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("inquiries")
+}
+
+// Anonymous search query log — powers the admin analytics page
+model SearchLog {
+  id          String   @id @default(cuid())
+  query       String
+  resultCount Int
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("search_logs")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  roomType    String
+  images      String[]
+  avatar      String
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published, createdAt])
+}
